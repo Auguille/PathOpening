@@ -1,431 +1,281 @@
 #include "PO.h"
 
-#include "algorithm"
+#include <algorithm>
+#include <queue>
 #include <iostream>
 
-PO::PO(std::string inputFilename, int L):
-    L(L)
+PO::PO(std::string inputFilename)
 {
     input.readImage(inputFilename);
-    initOutputImage();
-
-    sortedImage.resize(input.getHeight()*input.getWidth());
+    initOutput();
+    sortImage();
 }
 
 PO::~PO()
 {
 }
 
-void PO::initVPaths()
+void PO::createNeighborhood(int neighborType, 
+                             std::vector<int> &np, 
+                             std::vector<int> &nm)
 {
-    for(int i=0; i<input.getHeight(); ++i)
+    // S-N
+    if(neighborType == 1)
     {
-        for(int j=0; j<input.getWidth(); ++j)
-        {
-            if(1+i > L)
-                input.setPixelUpwardPath(j,i,L);
-            else
-                input.setPixelUpwardPath(j,i,i+1);
+        np.push_back(-input.getWidth()-1);
+        np.push_back(-input.getWidth());
+        np.push_back(-input.getWidth()+1);
 
-            if(input.getHeight()-i > L)
-                input.setPixelDownwardPath(j,i,L);
-            else
-                input.setPixelDownwardPath(j,i,input.getHeight()-i);
-        }
+        nm.push_back(input.getWidth()-1);
+        nm.push_back(input.getWidth());
+        nm.push_back(input.getWidth()+1);
+    }
+
+    //SW-NE
+    else if(neighborType == 2)
+    {
+        np.push_back(-input.getWidth());
+        np.push_back(1);
+        np.push_back(-input.getWidth()+1);
+
+        nm.push_back(input.getWidth());
+        nm.push_back(-1);
+        nm.push_back(input.getWidth()-1);
+    }
+
+    // W-E
+    else if(neighborType == 3)
+    {
+        np.push_back(-input.getWidth()+1);
+        np.push_back(1);
+        np.push_back(input.getWidth()+1);
+        
+        nm.push_back(-input.getWidth()-1);
+        nm.push_back(-1);
+        nm.push_back(input.getWidth()-1);
+    }
+
+    // NW-SE
+    else if(neighborType == 4)
+    {
+        np.push_back(-1);
+        np.push_back(-input.getWidth());
+        np.push_back(-input.getWidth()-1);
+        
+        nm.push_back(1);
+        nm.push_back(input.getWidth());
+        nm.push_back(input.getWidth()+1);
     }
 }
 
-void PO::initHPaths()
+bool PO::initInput(int L, int neighborType, std::vector<int> &lp, std::vector<int> &lm)
 {
-    for(int i=0; i<input.getHeight(); ++i)
+    bool pathLongEnough = false;
+    for(int i=0; i<input.getHeight()*input.getWidth(); ++i)
     {
-        for(int j=0; j<input.getWidth(); ++j)
+        int x = input.getPositionX(i);
+        int y = input.getPositionY(i);
+        if(x == 0 || y == 0 || x == input.getWidth()-1 || y == input.getHeight()-1)
         {
-            if(input.getWidth()-j > L)
-                input.setPixelUpwardPath(j,i,L);
-            else
-                input.setPixelUpwardPath(j,i,input.getWidth()-j);
-
-            if(j+1 > L)
-                input.setPixelDownwardPath(j,i,L);
-            else
-                input.setPixelDownwardPath(j,i,j+1);
+            lm.push_back(0);
+            lp.push_back(0);
         }
-    }
-}
-
-void PO::computeVUpward(std::vector<std::vector<Pixel*>> &upwardPath)
-{
-    for(int i=0; i<upwardPath.size(); ++i)
-    {
-        for(int j=0; j<upwardPath[i].size(); ++j)
+        else
         {
-            int x = upwardPath[i][j]->getPositionX();
-            int y = upwardPath[i][j]->getPositionY();
-
-            bool hasChanged = false;
-            int newValue = 0;
-            if(input.isPixelValid(x,y))
+            switch (neighborType)
             {
-                if(x == 0)
-                    newValue = 1+std::max(input.getPixelUpwardPath(x,y-1), input.getPixelUpwardPath(x+1,y-1));
-                else if(x == input.getWidth()-1)
-                    newValue = 1+std::max(input.getPixelUpwardPath(x-1,y-1), input.getPixelUpwardPath(x,y-1));
+            case 1:
+                if(y >= L)
+                {
+                    lm.push_back(L);
+                    pathLongEnough = true;
+                }
                 else
-                    newValue = 1+std::max(input.getPixelUpwardPath(x-1,y-1), std::max(input.getPixelUpwardPath(x,y-1), input.getPixelUpwardPath(x+1,y-1)));
-                int olderUpwardPath = input.getPixelUpwardPath(x,y);
-
-                if(olderUpwardPath > newValue)
-                    hasChanged=true;
-            }
-
-            if(!input.isPixelValid(x,y) || hasChanged)
-            {
-                input.setPixelUpwardPath(x,y,newValue);
-
-                // Si le point a des successeurs on les ajoute
-                if(i < upwardPath.size()-1)
+                    lm.push_back(y);
+                
+                if(input.getHeight()-1-y > L)
                 {
-                    if(x > 0 && input.isPixelValid(x-1,y+1))
-                        upwardPath[i+1].push_back(input.getPixelAdress(x-1, y+1));
-
-                    if(x < input.getWidth()-1 && input.isPixelValid(x+1,y+1))
-                        upwardPath[i+1].push_back(input.getPixelAdress(x+1, y+1));
-
-                    if(input.isPixelValid(x,y+1))
-                        upwardPath[i+1].push_back(input.getPixelAdress(x, y+1));
+                    lp.push_back(L);
+                    pathLongEnough = true;
                 }
-
-                // Si le point n'est pas encore dans la file on l'ajoute
-                if(!input.isPixelInQueue(x,y))
-                {
-                    activePixel.push_back(input.getPixelAdress(x,y));
-                    input.setPixelInQueue(x,y,true);
-                }
-            }
-        }
-        upwardPath[i].clear();
-    }
-}
-
-void PO::computeHUpward(std::vector<std::vector<Pixel*>> &upwardPath)
-{
-    for(int i=upwardPath.size()-1; i>=0; --i)
-    {
-        for(int j=0; j<upwardPath[i].size(); ++j)
-        {
-            int x = upwardPath[i][j]->getPositionX();
-            int y = upwardPath[i][j]->getPositionY();
-
-            bool hasChanged = false;
-            int newValue = 0;
-            if(input.isPixelValid(x,y))
-            {
-                if(y == 0)
-                    newValue = 1+std::max(input.getPixelUpwardPath(x+1,y), input.getPixelUpwardPath(x+1,y+1));
-                else if(y == input.getHeight()-1)
-                    newValue = 1+std::max(input.getPixelUpwardPath(x+1,y-1), input.getPixelUpwardPath(x+1,y));
                 else
-                    newValue = 1+std::max(input.getPixelUpwardPath(x+1,y-1), std::max(input.getPixelUpwardPath(x+1,y), input.getPixelUpwardPath(x+1,y+1)));
-                int olderUpwardPath = input.getPixelUpwardPath(x,y);
+                    lp.push_back(input.getHeight()-1-y);
+                break;
 
-                if(olderUpwardPath > newValue)
-                    hasChanged=true;
-            }
-
-            if(!input.isPixelValid(x,y) || hasChanged)
-            {
-                input.setPixelUpwardPath(x,y,newValue);
-
-                // Si le point a des successeurs on les ajoute
-                if(i > 0)
+            case 2:
+                if((input.getWidth()-2)-(x-1)+(y-1) >= L)
                 {
-                    if(y > 0 && input.isPixelValid(x-1,y-1))
-                        upwardPath[i-1].push_back(input.getPixelAdress(x-1, y-1));
-
-                    if(y < input.getHeight()-1 && input.isPixelValid(x-1,y+1))
-                        upwardPath[i-1].push_back(input.getPixelAdress(x-1, y+1));
-
-                    if(input.isPixelValid(x-1,y))
-                        upwardPath[i-1].push_back(input.getPixelAdress(x-1, y));
+                    lm.push_back(L);
+                    pathLongEnough = true;
                 }
-
-                // Si le point n'est pas encore dans la file on l'ajoute
-                if(!input.isPixelInQueue(x,y))
-                {
-                    activePixel.push_back(input.getPixelAdress(x,y));
-                    input.setPixelInQueue(x,y,true);
-                }
-            }
-        }
-        upwardPath[i].clear();
-    }
-}
-
-void PO::computeVDownward(std::vector<std::vector<Pixel*>> &downwardPath)
-{
-    for(int i=downwardPath.size()-1; i>=0; --i)
-    {
-        for(int j=0; j<downwardPath[i].size(); ++j)
-        {
-            int x = downwardPath[i][j]->getPositionX();
-            int y = downwardPath[i][j]->getPositionY();
-
-            bool hasChanged = false;
-            int newValue = 0;
-            if(input.isPixelValid(x,y))
-            {
-                if(x == 0)
-                    newValue = 1+std::max(input.getPixelDownwardPath(x,y+1), input.getPixelDownwardPath(x+1,y+1));
-                else if(x == input.getWidth()-1)
-                    newValue = 1+std::max(input.getPixelDownwardPath(x-1,y+1), input.getPixelDownwardPath(x,y+1));
                 else
-                    newValue = 1+std::max(input.getPixelDownwardPath(x-1,y+1), std::max(input.getPixelDownwardPath(x,y+1), input.getPixelDownwardPath(x+1,y+1)));
-                int olderDownwardPath = input.getPixelDownwardPath(x,y);
+                    lm.push_back((input.getWidth()-2)-(x-1)+(y-1));
 
-                if(olderDownwardPath > newValue)
-                    hasChanged=true;
-            }
-
-            if(!input.isPixelValid(x,y) || hasChanged)
-            {
-                input.setPixelDownwardPath(x,y,newValue);
-
-                // Si le point a des successeurs on les ajoute
-                if(i > 0)
+                if((input.getWidth()-2)+(x-1)-(y-1) >= L)
                 {
-                    if(x > 0 && input.isPixelValid(x-1,y-1))
-                        downwardPath[i-1].push_back(input.getPixelAdress(x-1, y-1));
-
-                    if(x < input.getWidth()-1 && input.isPixelValid(x+1,y-1))
-                        downwardPath[i-1].push_back(input.getPixelAdress(x+1, y-1));
-
-                    if(input.isPixelValid(x,y-1))
-                        downwardPath[i-1].push_back(input.getPixelAdress(x, y-1));
+                    lp.push_back(L);
+                    pathLongEnough = true;
                 }
-
-                // Si le point n'est pas encore dans la file on l'ajoute
-                if(!input.isPixelInQueue(x,y))
-                {
-                    activePixel.push_back(input.getPixelAdress(x,y));
-                    input.setPixelInQueue(x,y,true);
-                }
-            }
-        }
-        downwardPath[i].clear();
-    }
-}
-
-void PO::computeHDownward(std::vector<std::vector<Pixel*>> &downwardPath)
-{
-    for(int i=0; i<downwardPath.size(); ++i)
-    {
-        for(int j=0; j<downwardPath[i].size(); ++j)
-        {
-            int x = downwardPath[i][j]->getPositionX();
-            int y = downwardPath[i][j]->getPositionY();
-
-            bool hasChanged = false;
-            int newValue = 0;
-            if(input.isPixelValid(x,y))
-            {
-                if(y == 0)
-                    newValue = 1+std::max(input.getPixelDownwardPath(x-1,y), input.getPixelDownwardPath(x-1,y+1));
-                else if(y == input.getHeight()-1)
-                    newValue = 1+std::max(input.getPixelDownwardPath(x-1,y-1), input.getPixelDownwardPath(x-1,y));
                 else
-                    newValue = 1+std::max(input.getPixelDownwardPath(x-1,y-1), std::max(input.getPixelDownwardPath(x-1,y), input.getPixelDownwardPath(x-1,y+1)));
-                int olderDownwardPath = input.getPixelDownwardPath(x,y);
-
-                if(olderDownwardPath > newValue)
-                    hasChanged=true;
-            }
-
-            if(!input.isPixelValid(x,y) || hasChanged)
-            {
-                input.setPixelDownwardPath(x,y,newValue);
-
-                // Si le point a des successeurs on les ajoute
-                if(i < downwardPath.size()-1)
+                    lp.push_back((input.getWidth()-2)+(x-1)-(y-1));
+                break;
+            
+            case 3:
+                if(x >= L)
                 {
-                    if(y > 0 && input.isPixelValid(x+1,y-1))
-                        downwardPath[i+1].push_back(input.getPixelAdress(x+1, y-1));
-
-                    if(y < input.getHeight()-1 && input.isPixelValid(x+1,y+1))
-                        downwardPath[i+1].push_back(input.getPixelAdress(x+1, y+1));
-
-                    if(input.isPixelValid(x+1,y))
-                        downwardPath[i+1].push_back(input.getPixelAdress(x+1, y));
+                    lp.push_back(L);
+                    pathLongEnough = true;
                 }
-
-                // Si le point n'est pas encore dans la file on l'ajoute
-                if(!input.isPixelInQueue(x,y))
+                else
+                    lp.push_back(x);
+                
+                if(input.getWidth()-1-x >= L)
                 {
-                    activePixel.push_back(input.getPixelAdress(x,y));
-                    input.setPixelInQueue(x,y,true);
+                    lm.push_back(L);
+                    pathLongEnough = true;
                 }
+                else
+                    lm.push_back(input.getWidth()-1-x);
+                break;
+
+            case 4:
+                if(input.getWidth()-2+input.getHeight()-2-1-(x-1)-(y-1) >= L)
+                {
+                    lp.push_back(L);
+                    pathLongEnough = true;
+                }
+                else
+                    lp.push_back((input.getWidth()-2)+(input.getHeight()-2)-1-(x-1)-(y-1));   
+
+                if((x-1)+(y-1)+1 >= L)
+                {
+                    lm.push_back(L);
+                    pathLongEnough = true;
+                }
+                else
+                    lm.push_back((x-1)+(y-1)+1);
+                break;
+
+            default:
+                break;
             }
         }
-        downwardPath[i].clear();
     }
+
+    return pathLongEnough;
 }
 
-void PO::applyThreshold(int threshold)
+void PO::computePO(int L, int neighborType)
 {
-    for(int i=0; i<activePixel.size(); ++i)
+    std::vector<int> np, nm;
+    createNeighborhood(neighborType, np, nm);
+
+    std::vector<int> lp, lm;
+    if(initInput(L, neighborType, lp, lm))
     {
-        int x = activePixel[i]->getPositionX();
-        int y = activePixel[i]->getPositionY();
-        int pathLength = input.getPixelUpwardPath(x,y) + input.getPixelDownwardPath(x,y) - 1;
-        if(pathLength < L)
+        std::vector<Pixel*> Qc;
+        for(int i=0; i<sortedImage.size(); ++i)
         {
-            if(output.getPixelIntensity(x,y) == -1 || output.getPixelIntensity(x,y) < threshold)
-                output.setPixelIntensity(x, y, threshold);
-
-            input.setPixelDownwardPath(x,y,0);
-            input.setPixelUpwardPath(x,y,0);
-            input.setPixelValid(x,y,false);
-        }
-        input.setPixelInQueue(x,y,false);
-    }
-    activePixel.clear();
-}
-
-void PO::computeVPO()
-{
-    initVPaths();
-
-    int index = 0;
-    std::vector<std::vector<Pixel*>> upwardPath;
-    std::vector<std::vector<Pixel*>> downwardPath;
-    upwardPath.resize(input.getHeight());
-    downwardPath.resize(input.getHeight());
-
-    for(int it=0; it<threshold.size(); it++)
-    {
-        int t = threshold[it];
-
-        while(index < sortedImage.size() && sortedImage[index]->getValue() == t)
-        {
-            int x = sortedImage[index]->getPositionX();
-            int y = sortedImage[index]->getPositionY();
-            if(input.isPixelValid(x,y))
+            int pos = sortedImage[i]->getPosition();
+            if(input.isPixelValid(pos))
             {
-                upwardPath[y].push_back(sortedImage[index]);
-                downwardPath[y].push_back(sortedImage[index]);
-                input.setPixelValid(x,y,false);
+                propagate(sortedImage[i], lm, np, nm, Qc);
+                propagate(sortedImage[i], lp, nm, np, Qc);
+
+                for(int i=0; i<Qc.size(); ++i)
+                {
+                    int p = Qc[i]->getPosition();
+                    if(lp[p]+lm[p]-1 < L)
+                    {
+                        if(input.getPixelIntensity(pos) > output.getPixelIntensity(p))
+                            output.setPixelIntensity(p, input.getPixelIntensity(pos));
+                        input.setPixelValid(p,false);
+                        lp[p]=0;
+                        lm[p]=0;
+                    }
+                    input.setPixelInQueue(p, false);
+                }
+                Qc.clear();
             }
-            index++;
         }
-
-        // Compute lamda- and lambda+
-        computeVUpward(upwardPath);
-        computeVDownward(downwardPath);
-
-        applyThreshold(t);
-
     }
 }
 
-void PO::computeHPO()
+void PO::propagate(Pixel *p, 
+                    std::vector<int> &path,
+                    std::vector<int> &pred, 
+                    std::vector<int> &succ,
+                    std::vector<Pixel*> &Qc)
 {
-    initHPaths();
-    std::vector<std::vector<Pixel*>> upwardPath;
-    std::vector<std::vector<Pixel*>> downwardPath;
-    upwardPath.resize(input.getWidth());
-    downwardPath.resize(input.getWidth());
-
-    int index = 0;
-    for(int it=0; it<threshold.size(); it++)
+    int pos = p->getPosition();
+    if(!input.isPixelInQueue(pos))
     {
-        int t = threshold[it];
-
-        while(index < sortedImage.size() && sortedImage[index]->getValue() == t)
-        {
-            int x = sortedImage[index]->getPositionX();
-            int y = sortedImage[index]->getPositionY();
-            if(input.isPixelValid(x,y))
-            {
-                upwardPath[x].push_back(sortedImage[index]);
-                downwardPath[x].push_back(sortedImage[index]);
-                input.setPixelValid(x,y,false);
-            }
-            index++;
-        }
-
-        // Compute lamda- and lambda+
-        computeHUpward(upwardPath);
-        computeHDownward(downwardPath);
-
-        applyThreshold(t);
+        Qc.push_back(p);
+        input.setPixelInQueue(pos, true);
     }
+    path[pos] = 0;
+
+    std::queue<Pixel*> Qq;
+    for(int i=0; i<succ.size(); ++i)
+    {
+        if(input.isPixelValid(pos+succ[i]))
+            Qq.push(input.getPixelAdress(pos+succ[i]));
+    }
+
+    while(!Qq.empty())
+    {
+        int position = Qq.front()->getPosition();
+        Qq.pop();
+        int length = 0;
+        for(int i=0; i<pred.size(); ++i)
+            length = std::max(path[position+pred[i]], length);
+
+        length++;
+
+        if(length < path[position])
+        {
+            path[position] = length;
+            for(int i=0; i<succ.size(); ++i)
+            {
+                if(input.isPixelValid(position+succ[i]))
+                    Qq.push(input.getPixelAdress(position+succ[i]));
+            }
+
+            if(!input.isPixelInQueue(position))
+            {
+                Qc.push_back(input.getPixelAdress(position));
+                input.setPixelInQueue(position, true);
+            }
+        }
+    }
+
 }
 
 void PO::sortImage()
 {
-    for(int i=0; i<input.getHeight(); ++i)
+    for(int i=0; i<input.getWidth()*input.getHeight(); ++i)
     {
-        for(int j=0; j<input.getWidth(); ++j)
-        {
-            sortedImage[i*input.getWidth()+j] = input.getPixelAdress(j,i);
-        }
+        if(input.isPixelValid(i))
+            sortedImage.push_back(input.getPixelAdress(i));
     }
 
-    std::sort(sortedImage.begin(), sortedImage.end(), [](Pixel *p1, Pixel *p2)
+    std::stable_sort(sortedImage.begin(), sortedImage.end(), [](Pixel *p1, Pixel *p2)
     {
         return p1->getValue() < p2->getValue();
     });
-
-    threshold.resize(sortedImage.size());
-    for(int i=0; i<sortedImage.size(); ++i)
-        threshold[i] = sortedImage[i]->getValue();
-
-    auto last = std::unique(threshold.begin(), threshold.end());
-    threshold.erase(last, threshold.end());
 }
 
-
-void PO::compute()
+void PO::reset()
 {
-    sortImage();
-    
-    computeVPO();
-
-    for(int i=0; i<input.getHeight(); ++i)
+    for(int i=0; i<input.getHeight()*input.getWidth(); ++i)
     {
-        for(int j=0; j<input.getWidth(); ++j)
-        {
-            input.setPixelValid(j,i,true);
-        }
+        int x = input.getPositionX(i);
+        int y = input.getPositionY(i);
+        if(x == 0 || y == 0 || x == input.getWidth()-1 || y == input.getHeight()-1)
+            input.setPixelValid(i,false);
+        else
+            input.setPixelValid(i,true);
     }
-
-    computeHPO();
-
-}
-
-void PO::printPath()
-{
-    std::cout << "Lambda-\n";
-    for(int i=0; i<input.getHeight(); ++i)
-    {
-        for(int j=0; j<input.getWidth(); ++j)
-        {
-            std::cout << input.getPixelUpwardPath(j,i) << " ";
-        }
-        std::cout << std::endl;
-    }
-    std::cout << std::endl;
-
-    std::cout << "Lambda+\n";
-    for(int i=0; i<input.getHeight(); ++i)
-    {
-        for(int j=0; j<input.getWidth(); ++j)
-        {
-            std::cout << input.getPixelDownwardPath(j,i) << " ";
-        }
-        std::cout << std::endl;
-    }
-    std::cout << std::endl;
 }
 
 void PO::writeResult(std::string filename)
@@ -433,18 +283,33 @@ void PO::writeResult(std::string filename)
     output.writeImage(filename);
 }
 
-void PO::initOutputImage()
+void PO::initOutput()
 {
-    output.setHeight(input.getHeight());
-    output.setWidth(input.getWidth());
-    output.setGrayLevel(input.getGrayLevel());
-    output.resizeImage();
+    output = input;
+    for(int i=0; i<input.getHeight()*input.getWidth(); ++i)
+        output.setPixelIntensity(i, 0);
+}
 
-    for(int i=0; i<output.getHeight(); ++i)
+void PO::printPath(std::vector<int> &lp, std::vector<int> &lm)
+{
+    std::cout << "Lambda-\n";
+    for(int i=0; i<input.getHeight()*input.getWidth(); ++i)
     {
-        for(int j=0; j<output.getWidth(); ++j)
-        {
-            output.setPixelIntensity(j,i,-1);
-        }
+        if(i%input.getWidth() == 0)
+            std::cout << std::endl;
+        std::cout << lm[i] << " ";
+
     }
+    std::cout << std::endl;
+    std::cout << std::endl;
+
+    std::cout << "Lambda+\n";
+    for(int i=0; i<input.getHeight()*input.getWidth(); ++i)
+    {
+        if(i%input.getWidth() == 0)
+            std::cout << std::endl;
+        std::cout << lp[i] << " ";
+    }
+    std::cout << std::endl;
+    std::cout << std::endl;
 }

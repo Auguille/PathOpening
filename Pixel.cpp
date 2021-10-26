@@ -13,14 +13,9 @@ int Pixel::getValue()
     return this->value;
 }
 
-int Pixel::getUpwardPath()
+int Pixel::getPosition()
 {
-    return this->upwardPath;
-}
-
-int Pixel::getDownwardPath()
-{
-    return this->downwardPath;
+    return this->position;
 }
 
 int Pixel::getPositionX()
@@ -48,24 +43,19 @@ void Pixel::setValue(int value)
     this->value = value;
 }
 
-void Pixel::setUpwardPath(int upwardPath)
+void Pixel::setPosition(int position)
 {
-    this->upwardPath = upwardPath;
+    this->position = position;
 }
 
-void Pixel::setDownwardPath(int downwardPath)
+void Pixel::setPositionX(int positionX)
 {
-    this->downwardPath = downwardPath;
+    this->positionX = positionX;
 }
 
-void Pixel::setPositionX(int position)
+void Pixel::setPositionY(int positionY)
 {
-    this->positionX = position;
-}
-
-void Pixel::setPositionY(int position)
-{
-    this->positionY = position;
+    this->positionY = positionY;
 }
 
 void Pixel::setValid(bool isValid)

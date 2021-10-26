@@ -1,46 +1,44 @@
-#ifndef __OP_H__
-#define __OP_H__
+#ifndef __PO_H__
+#define __PO_H__
 
 #include "Image.h"
 
 class PO
 {
     public:
-        PO(std::string inputFilename, int L);
+        PO(std::string inputFilename);
         ~PO();
 
-        void compute();
+        void computePO(int L, int neighborType);
         void writeResult(std::string filename);
+        void reset();
 
     private:
-        void computeVPO();
-        void computeHPO();
-        void computeSENWPO();
+        void printPath(std::vector<int> &lp, std::vector<int> &lm);
+        void initOutput();
         void sortImage();
-        void initVPaths();
-        void initHPaths();
-        void computeVUpward(std::vector<std::vector<Pixel*>> &upwardPath);
-        void computeHUpward(std::vector<std::vector<Pixel*>> &upwardPath);
-        void computeVDownward(std::vector<std::vector<Pixel*>> &downwardPath);
-        void computeHDownward(std::vector<std::vector<Pixel*>> &downwardPath);
-
-        void applyThreshold(int threshold);
-
-        void initOutputImage();
-
-        // Debug
-        void printPath();
-
+        void initValidArray(std::vector<bool> &valid);
+        bool initInput(int L, 
+                       int neighborType, 
+                       std::vector<int> &lp, 
+                       std::vector<int> &lm);
+        void propagate(Pixel *p,
+                       std::vector<int> &path,
+                       std::vector<int> &nf, 
+                       std::vector<int> &nb,
+                       std::vector<Pixel*> &Qc);
+        void createNeighborhood(int neighborType, 
+                                std::vector<int> &np, 
+                                std::vector<int> &nm);
 
     private:
         Image input;
         Image output;
-        int L;
 
-        std::vector<Pixel*> activePixel;
         std::vector<Pixel*> sortedImage;
-        std::vector<int> threshold;
 
+        std::vector<bool> b;
+        std::vector<Pixel*> Qc;
 };
 
 #endif

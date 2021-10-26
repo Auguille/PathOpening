@@ -42,67 +42,50 @@ void Image::setGrayLevel(int grayLevel)
     this->grayLevel = grayLevel;
 }
 
-void Image::resizeImage()
+int Image::getPixelIntensity(int i)
 {
-    this->image.resize(this->height);
-    for(int i=0; i<this->height; ++i)
-        this->image[i].resize(this->width);   
+    return this->image[i].getValue();
 }
 
-int Image::getPixelIntensity(int x, int y)
+int Image::getPositionX(int i)
 {
-    return this->image[y][x].getValue();
+    return this->image[i].getPositionX();
 }
 
-int Image::getPixelUpwardPath(int x, int y)
+int Image::getPositionY(int i)
 {
-    return this->image[y][x].getUpwardPath();
+    return this->image[i].getPositionY();
 }
 
-int Image::getPixelDownwardPath(int x, int y)
+bool Image::isPixelValid(int i)
 {
-    return this->image[y][x].getDownwardPath();
+    return this->image[i].isValid();
 }
 
-bool Image::isPixelValid(int x, int y)
+bool Image::isPixelInQueue(int i)
 {
-    return this->image[y][x].isValid();
-}
-
-bool Image::isPixelInQueue(int x, int y)
-{
-    return this->image[y][x].isInsideQueue();
+    return this->image[i].isInsideQueue();
 }
 
 
-Pixel* Image::getPixelAdress(int x, int y)
+Pixel* Image::getPixelAdress(int i)
 {
-    return &this->image[y][x];
+    return &this->image[i];
 }
 
-void Image::setPixelIntensity(int x, int y, int value)
+void Image::setPixelIntensity(int i, int value)
 {
-    this->image[y][x].setValue(value);
+    this->image[i].setValue(value);
 }
 
-void Image::setPixelUpwardPath(int x, int y, int value)
+void Image::setPixelValid(int i, bool isValid)
 {
-    this->image[y][x].setUpwardPath(value);
+    this->image[i].setValid(isValid);
 }
 
-void Image::setPixelDownwardPath(int x, int y, int value)
+void Image::setPixelInQueue(int i, bool isInQueue)
 {
-    this->image[y][x].setDownwardPath(value);
-}
-
-void Image::setPixelValid(int x, int y, bool isValid)
-{
-    this->image[y][x].setValid(isValid);
-}
-
-void Image::setPixelInQueue(int x, int y, bool isInQueue)
-{
-    this->image[y][x].setInsideQueue(isInQueue);
+    this->image[i].setInsideQueue(isInQueue);
 }
 
 void Image::readImage(std::string filename)
@@ -116,30 +99,31 @@ void Image::readImage(std::string filename)
 
     fs >> this->width >> this->height >> this->grayLevel;
 
-    this->image.resize(this->height);
-    for(int i=0; i<this->height; ++i)
-        this->image[i].resize(this->width);
+    this->width+=2;
+    this->height+=2;
 
-    for(int i=0; i<this->height; ++i)
+    this->image.resize(this->height*this->width);
+
+    for(int i=0; i<this->height*this->width; ++i)
     {
-        for(int j=0; j<this->width; ++j)
+        int x = i%this->width;
+        int y = i/this->width;
+        if(x == 0 || y == 0 || x == this->width-1 || y == this->height-1)
+        {
+            this->image[i].setValue(0);
+            this->image[i].setValid(false);
+        }
+        else
         {
             int value;
             fs >> value;
-            this->image[i][j].setValue(value);
-            this->image[i][j].setValid(true);
-            // if(1+i > L-1)
-            //     this->image[i][j].setUpwardPath(L-1);
-            // else
-            this->image[i][j].setUpwardPath(i+1);
-            // if(this->height-i > L-1)
-            //     this->image[i][j].setDownwardPath(L-1);
-            // else
-            this->image[i][j].setDownwardPath(this->height-i);
-            this->image[i][j].setInsideQueue(false);
-            this->image[i][j].setPositionX(j);
-            this->image[i][j].setPositionY(i);
+            this->image[i].setValue(value);
+            this->image[i].setValid(true);
         }
+        this->image[i].setInsideQueue(false);
+        this->image[i].setPosition(i);
+        this->image[i].setPositionX(x);
+        this->image[i].setPositionY(y);
     }
 
     fs.close();
@@ -149,13 +133,34 @@ void Image::writeImage(std::string filename)
 {
     std::fstream fs(filename, std::fstream::out);
 
-    fs << "P2\n" << this->width << " " << this->height << "\n" << this->grayLevel << "\n";
+    fs << "P2\n" << this->width-2 << " " << this->height-2 << "\n" << this->grayLevel << "\n";
 
-    for(int i=0; i<this->height; ++i)
+    for(int i=0; i<this->height*this->width; ++i)
     {
-        for(int j=0; j<this->width; ++j)
-            fs << this->image[i][j].getValue() << " ";
-        fs << "\n";
+        int x = i%this->width;
+        int y = i/this->width;
+        if(x == 0 || y == 0 || x == this->width-1 || y == this->height-1)
+            continue;
+
+        else
+        {
+            fs << this->image[i].getValue() << " ";
+            if(x == this->width-2)
+                fs << "\n";
+        }
     }
             
+}
+
+void Image::invert()
+{
+    for(int i=0; i<this->height*this->width; ++i)
+    {
+        int x = i%this->width;
+        int y = i/this->width;
+        if(x == 0 || y == 0 || x == this->width-1 || y == this->height-1)
+            continue;
+        else
+            image[i].setValue(this->grayLevel+1+~image[i].getValue());
+    }
 }

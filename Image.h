@@ -20,24 +20,21 @@ class Image
         void setWidth(int width);
         void setGrayLevel(int grayLevel);
 
-        void resizeImage();
+        Pixel* getPixelAdress(int i);
 
-        Pixel* getPixelAdress(int x, int y);
+        int getPixelIntensity(int i);
+        int getPositionX(int i);
+        int getPositionY(int i);
+        bool isPixelValid(int i);
+        bool isPixelInQueue(int i);
 
-        int getPixelIntensity(int x, int y);
-        int getPixelUpwardPath(int x, int y);
-        int getPixelDownwardPath(int x, int y);
-        bool isPixelValid(int x, int y);
-        bool isPixelInQueue(int x, int y);
-
-        void setPixelIntensity(int x, int y, int value);
-        void setPixelUpwardPath(int x, int y, int value);
-        void setPixelDownwardPath(int x, int y, int value);
-        void setPixelValid(int x, int y, bool isValid);
-        void setPixelInQueue(int x, int y, bool isInQueue);
+        void setPixelIntensity(int i, int value);
+        void setPixelValid(int i, bool isValid);
+        void setPixelInQueue(int i, bool isInQueue);
 
         void readImage(std::string filename);
         void writeImage(std::string filename);
+        void invert();
 
 
     private:
@@ -45,7 +42,7 @@ class Image
         int width;
         int grayLevel;
 
-        std::vector<std::vector<Pixel>> image;
+        std::vector<Pixel> image;
 };
 
 #endif

@@ -1,5 +1,5 @@
 CC = g++
-CFLAGS = #-Wall
+CFLAGS =
 EXEC_NAME = PathOpening
 INCLUDES = 
 OBJ_FILES = Pixel.o Image.o PO.o main.o

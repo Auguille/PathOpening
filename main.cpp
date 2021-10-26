@@ -18,8 +18,13 @@ int main(int argc, char const *argv[])
         L = 3;
     }
 
-    PO path(input, L);
-    path.compute();
+    PO path(input);
+    for(int i=1; i<5; ++i)
+    {
+        path.computePO(L,i);
+        path.reset();
+    }
+
     path.writeResult(output);
     
     return 0;
