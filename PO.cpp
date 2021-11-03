@@ -4,9 +4,9 @@
 #include <queue>
 #include <iostream>
 
-PO::PO(std::string inputFilename)
+PO::PO(std::vector<std::vector<int>> &image)
 {
-    input.readImage(inputFilename);
+    input.initImage(image);
     initOutput();
     sortImage();
 }
@@ -165,7 +165,8 @@ bool PO::initInput(int L, int neighborType, std::vector<int> &lp, std::vector<in
     return pathLongEnough;
 }
 
-void PO::computePO(int L, int neighborType)
+py::array PO::computePO(int L, int neighborType)
+// std::vector<std::vector<int>> PO::computePO(int L, int neighborType)
 {
     std::vector<int> np, nm;
     createNeighborhood(neighborType, np, nm);
@@ -199,6 +200,9 @@ void PO::computePO(int L, int neighborType)
             }
         }
     }
+
+    // return output.returnImage();
+    return py::cast(output.returnImage());
 }
 
 void PO::propagate(Pixel *p, 
@@ -278,11 +282,6 @@ void PO::reset()
     }
 }
 
-void PO::writeResult(std::string filename)
-{
-    output.writeImage(filename);
-}
-
 void PO::initOutput()
 {
     output = input;
@@ -312,4 +311,12 @@ void PO::printPath(std::vector<int> &lp, std::vector<int> &lm)
     }
     std::cout << std::endl;
     std::cout << std::endl;
+}
+
+PYBIND11_MODULE(PathOpening, m)
+{
+    py::class_<PO>(m, "PO")
+        .def(py::init<std::vector<std::vector<int>> &>())
+        .def("reset", &PO::reset)
+        .def("computePO", &PO::computePO);
 }

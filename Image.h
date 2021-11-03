@@ -32,6 +32,8 @@ class Image
         void setPixelValid(int i, bool isValid);
         void setPixelInQueue(int i, bool isInQueue);
 
+        void initImage(std::vector<std::vector<int>> &image);
+        std::vector<std::vector<int>> returnImage();
         void readImage(std::string filename);
         void writeImage(std::string filename);
         void invert();

@@ -2,15 +2,19 @@
 #define __PO_H__
 
 #include "Image.h"
+#include <pybind11/pybind11.h>
+#include <pybind11/stl.h>
+#include <pybind11/numpy.h>
+
+namespace py = pybind11;
 
 class PO
 {
     public:
-        PO(std::string inputFilename);
+        PO(std::vector<std::vector<int>> &image);
         ~PO();
 
-        void computePO(int L, int neighborType);
-        void writeResult(std::string filename);
+        py::array computePO(int L, int neighborType);
         void reset();
 
     private:
