@@ -13,6 +13,7 @@ class Pixel
         int getPositionY();
         bool isValid();
         bool isInsideQueue();
+        bool isBorder();
 
         void setValue(int value);
         void setPosition(int position);
@@ -20,11 +21,13 @@ class Pixel
         void setPositionY(int positionY);
         void setValid(bool isValid);
         void setInsideQueue(bool isInside);
+        void setBorder(bool isBorder);
 
     private:
         int value;                      // intensité du pixel
         bool valid;                     // Le pixel respecte encore le seuil ?
         bool insideQueue;               // Le pixel est présent dans la pile
+        bool border;
 
         int position;                  // Position du pixel dans le tableau
         int positionX;

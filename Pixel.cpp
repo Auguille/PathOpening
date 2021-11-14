@@ -38,6 +38,11 @@ bool Pixel::isInsideQueue()
     return this->insideQueue;
 }
 
+bool Pixel::isBorder()
+{
+    return this->border;
+}
+
 void Pixel::setValue(int value)
 {
     this->value = value;
@@ -66,4 +71,9 @@ void Pixel::setValid(bool isValid)
 void Pixel::setInsideQueue(bool isInside)
 {
     this->insideQueue = isInside;
+}
+
+void Pixel::setBorder(bool isBorder)
+{
+    this->border = isBorder;
 }

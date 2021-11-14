@@ -27,16 +27,15 @@ class Image
         int getPositionY(int i);
         bool isPixelValid(int i);
         bool isPixelInQueue(int i);
+        bool isPixelBorder(int i);
 
         void setPixelIntensity(int i, int value);
         void setPixelValid(int i, bool isValid);
         void setPixelInQueue(int i, bool isInQueue);
+        void setPixelBorder(int i, bool isBorder);
 
         void initImage(std::vector<std::vector<int>> &image);
         std::vector<std::vector<int>> returnImage();
-        void readImage(std::string filename);
-        void writeImage(std::string filename);
-        void invert();
 
 
     private:

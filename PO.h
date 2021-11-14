@@ -14,7 +14,7 @@ class PO
         PO(std::vector<std::vector<int>> &image);
         ~PO();
 
-        py::array computePO(int L, int neighborType);
+        py::array computePO(int L, int K, int neighborType);
         void reset();
 
     private:
@@ -24,13 +24,15 @@ class PO
         void initValidArray(std::vector<bool> &valid);
         bool initInput(int L, 
                        int neighborType, 
-                       std::vector<int> &lp, 
-                       std::vector<int> &lm);
+                       std::vector<std::vector<int>> &lp, 
+                       std::vector<std::vector<int>> &lm,
+                       int K);
         void propagate(Pixel *p,
-                       std::vector<int> &path,
+                       std::vector<std::vector<int>> &path,
                        std::vector<int> &nf, 
                        std::vector<int> &nb,
-                       std::vector<Pixel*> &Qc);
+                       std::vector<Pixel*> &Qc,
+                       int K);
         void createNeighborhood(int neighborType, 
                                 std::vector<int> &np, 
                                 std::vector<int> &nm);
