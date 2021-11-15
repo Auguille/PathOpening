@@ -211,6 +211,14 @@ py::array PO::computePO(int L, int K, int neighborType)
         }
     }
 
+    for(int i=0; i<input.getHeight()*input.getWidth(); ++i)
+    {
+        if(input.isPixelBorder(i))
+            input.setPixelValid(i,false);
+        else
+            input.setPixelValid(i,true);
+    }
+
     return py::cast(output.returnImage());
 }
 
@@ -223,8 +231,6 @@ void PO::propagate(Pixel *p,
                     std::vector<Pixel*> &Qc,
                     int K)
 {
-    static int cpt = 0;
-
     int pos = p->getPosition();
     if(!input.isPixelInQueue(pos))
     {
@@ -274,8 +280,6 @@ void PO::propagate(Pixel *p,
             }
         }
     }
-
-    cpt++;
 }
 
 void PO::sortImage()
@@ -292,19 +296,6 @@ void PO::sortImage()
     });
 }
 
-void PO::reset()
-{
-    for(int i=0; i<input.getHeight()*input.getWidth(); ++i)
-    {
-        int x = input.getPositionX(i);
-        int y = input.getPositionY(i);
-        if(x == 0 || y == 0 || x == input.getWidth()-1 || y == input.getHeight()-1)
-            input.setPixelValid(i,false);
-        else
-            input.setPixelValid(i,true);
-    }
-}
-
 void PO::initOutput()
 {
     output = input;
@@ -317,6 +308,5 @@ PYBIND11_MODULE(PathOpening, m)
 {
     py::class_<PO>(m, "PO")
         .def(py::init<std::vector<std::vector<int>> &>())
-        .def("reset", &PO::reset)
         .def("computePO", &PO::computePO);
 }
