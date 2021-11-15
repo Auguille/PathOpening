@@ -4,6 +4,11 @@ Implémentation en C++ de l'algorithme d'ouverture par chemin utilisable en pyth
 
 ## Installation
 
+```sh
+git clone git@git.unistra.fr:hiernard/pathopening.git
+git submodule update --init
+```
+
 On utilisera CMake afin de compiler le code de manière simple et efficace
 
 ```sh
