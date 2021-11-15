@@ -22,7 +22,9 @@ La libraire permet l'utilisation d'une fonction :
 computePO(PathLength, GapNumber, Direction)
 ```
 PathLength représente la longueur d'un chemin,
+
 GapNumber représente le nombre de trou présent au maximum dans un chemin,
+
 Direction représente le graphe de voisinage utilisé (1 = N-S, 2=NE-SW, 3=E-W, 4=SE-NW)
 
 Cette fonction renvoie l'image calculée à partir du maximum de chaque pixel entre l'image précédemment calculée (Une image nulle si il n'y a pas de précedent) et l'image calculée dans la direction n
