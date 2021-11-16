@@ -115,13 +115,13 @@ bool PO::initInput(int L, int neighborType, std::vector<std::vector<int>> &lp, s
                     else
                         lm[k].push_back((input.getWidth()-2)-(x-1)+(y-1));
 
-                    if((input.getWidth()-2)+(x-1)-(y-1) >= L)
+                    if((input.getHeight()-2)+(x-1)-(y-1) >= L)
                     {
                         lp[k].push_back(L);
                         pathLongEnough = true;
                     }
                     else
-                        lp[k].push_back((input.getWidth()-2)+(x-1)-(y-1));
+                        lp[k].push_back((input.getHeight()-2)+(x-1)-(y-1));
                     break;
                 
                 case 3:
@@ -170,6 +170,27 @@ bool PO::initInput(int L, int neighborType, std::vector<std::vector<int>> &lp, s
     return pathLongEnough;
 }
 
+void PO::printPath(std::vector<int> &lp, std::vector<int> &lm)
+{
+    for(int i=0; i<lp.size(); ++i)
+    {
+        if(i % input.getWidth() == 0)
+            std::cout << std::endl;
+        if(!input.isPixelBorder(i))
+            std::cout << lp[i] << " ";
+    }
+
+    std::cout << std::endl;
+
+    for(int i=0; i<lm.size(); ++i)
+    {
+        if(i % input.getWidth() == 0)
+            std::cout << std::endl;
+        if(!input.isPixelBorder(i))
+            std::cout << lm[i] << " ";
+    }
+}
+
 py::array PO::computePO(int L, int K, int neighborType)
 {
     std::vector<int> np, nm;
@@ -178,6 +199,7 @@ py::array PO::computePO(int L, int K, int neighborType)
     std::vector<std::vector<int>> lp, lm;
     if(initInput(L, neighborType, lp, lm, K))
     {
+        // printPath(lm[0], lp[0]);
         std::vector<Pixel*> Qc;
         for(int i=0; i<sortedImage.size(); ++i)
         {
