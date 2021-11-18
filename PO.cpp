@@ -1,7 +1,6 @@
 #include "PO.h"
 
 #include <algorithm>
-#include <queue>
 #include <iostream>
 
 PO::PO(std::vector<std::vector<int>> &image)
@@ -89,21 +88,21 @@ bool PO::initInput(int L, int neighborType, std::vector<std::vector<int>> &lp, s
                 switch (neighborType)
                 {
                 case 1:
-                    if(y >= L)
+                    if(y-1 >= L-1)
                     {
-                        lm[k].push_back(L);
+                        lm[k].push_back(L-1);
                         pathLongEnough = true;
                     }
                     else
-                        lm[k].push_back(y);
+                        lm[k].push_back(y-1);
                     
-                    if(input.getHeight()-1-y >= L)
+                    if(input.getHeight()-1-y-1 >= L-1)
                     {
-                        lp[k].push_back(L);
+                        lp[k].push_back(L-1);
                         pathLongEnough = true;
                     }
                     else
-                        lp[k].push_back(input.getHeight()-1-y);
+                        lp[k].push_back(input.getHeight()-1-y-1);
                     break;
 
                 case 2:
@@ -170,24 +169,32 @@ bool PO::initInput(int L, int neighborType, std::vector<std::vector<int>> &lp, s
     return pathLongEnough;
 }
 
-void PO::printPath(std::vector<int> &lp, std::vector<int> &lm)
+void PO::printPath(std::vector<std::vector<int>> &lp, std::vector<std::vector<int>> &lm, int K)
 {
-    for(int i=0; i<lp.size(); ++i)
+    for(int k=0; k<=K; ++k)
     {
-        if(i % input.getWidth() == 0)
-            std::cout << std::endl;
-        if(!input.isPixelBorder(i))
-            std::cout << lp[i] << " ";
+        std::cout << "k=" << k << "\n";
+        for(int i=0; i<lp[k].size(); ++i)
+        {
+            if(i % input.getWidth() == 0)
+                std::cout << std::endl;
+            if(!input.isPixelBorder(i))
+                std::cout << lp[k][i] << " ";
+        }
     }
 
     std::cout << std::endl;
 
-    for(int i=0; i<lm.size(); ++i)
+    for(int k=0; k<=K; ++k)
     {
-        if(i % input.getWidth() == 0)
-            std::cout << std::endl;
-        if(!input.isPixelBorder(i))
-            std::cout << lm[i] << " ";
+        std::cout << "k=" << k << "\n";
+        for(int i=0; i<lm[k].size(); ++i)
+        {
+            if(i % input.getWidth() == 0)
+                std::cout << std::endl;
+            if(!input.isPixelBorder(i))
+                std::cout << lm[k][i] << " ";
+        }
     }
 }
 
@@ -201,35 +208,52 @@ py::array PO::computePO(int L, int K, int neighborType)
     {
         // printPath(lm[0], lp[0]);
         std::vector<Pixel*> Qc;
-        for(int i=0; i<sortedImage.size(); ++i)
+        std::vector<std::queue<Pixel*>> listM(input.getHeight()), listP(input.getHeight());
+        std::vector<bool> isChanged(input.getWidth()*input.getHeight(), true);
+        for(int i=0; i<sortedImage.size();)
         {
-            int pos = sortedImage[i]->getPosition();
-            if(input.isPixelValid(pos))
+            int threshold = sortedImage[i]->getValue();
+            while(i<sortedImage.size() && sortedImage[i]->getValue() == threshold)
             {
-                propagate(sortedImage[i], lm, np, nm, Qc, K);
-                propagate(sortedImage[i], lp, nm, np, Qc, K);
-
-                for(int i=0; i<Qc.size(); ++i)
+                int pos = sortedImage[i]->getPosition();
+                if(input.isPixelValid(pos))
                 {
-                    int p = Qc[i]->getPosition();
-                    if(input.isPixelValid(p) || p == pos)
-                    {
-                        int length = 0;
-                        for(int k=0; k<=K; ++k)
-                            if(K-k-!input.isPixelValid(p) >= 0)
-                                length = std::max(lm[k][p]+lp[K-k-!input.isPixelValid(p)][p], length);
+                    input.setPixelValid(pos, false);
 
-                        if(length-1 < L)
-                        {
-                            if(input.getPixelIntensity(pos) > output.getPixelIntensity(p))
-                                output.setPixelIntensity(p, input.getPixelIntensity(pos));
-                            input.setPixelValid(p,false);
-                        }
+                    int length = 0;
+                    for(int k=0; k<K; ++k)
+                        length = std::max(lm[k][pos]+lp[K-k-1][pos], length);
+
+                    if(length+1 < L && isChanged[pos])
+                    {
+                        if(threshold > output.getPixelIntensity(pos))
+                            output.setPixelIntensity(pos, threshold);
+                        isChanged[pos] = false;
                     }
-                    input.setPixelInQueue(p, false);
+
+                    int y = input.getPositionY(pos);
+
+                    for(int j=0; j<nm.size(); ++j)
+                        if(!input.isPixelBorder(pos+nm[j]))
+                            listM[y+1].push(input.getPixelAdress(pos+nm[j]));
+
+                    for(int j=0; j<np.size(); ++j)
+                        if(!input.isPixelBorder(pos+np[j]))
+                            listP[y-1].push(input.getPixelAdress(pos+np[j]));
                 }
-                Qc.clear();
+                ++i;
             }
+
+            for(int j=0; j<listM.size()-1; ++j)
+                propagate(listM[j], listM[j+1], lm, nm, np, lm, lp, L, K, threshold, isChanged);
+
+            for(int j=listP.size()-1; j>0; --j)
+                propagate(listP[j], listP[j-1], lp, np, nm, lm, lp, L, K, threshold, isChanged);
+
+
+            std::cout << "----------------------\n";
+
+            printPath(lp, lm, K);
         }
     }
 
@@ -244,60 +268,59 @@ py::array PO::computePO(int L, int K, int neighborType)
     return py::cast(output.returnImage());
 }
 
-// Active = Qc
-// Enqueue = Qq 
-void PO::propagate(Pixel *p, 
-                    std::vector<std::vector<int>> &path,
-                    std::vector<int> &pred, 
-                    std::vector<int> &succ,
-                    std::vector<Pixel*> &Qc,
-                    int K)
+void PO::propagate(  std::queue<Pixel*> &queue, 
+                std::queue<Pixel*> &next, 
+                std::vector<std::vector<int>> &path, 
+                std::vector<int> &succ, 
+                std::vector<int> &pred, 
+                std::vector<std::vector<int>> &lm, 
+                std::vector<std::vector<int>> &lp, 
+                int L, 
+                int K, 
+                int threshold,
+                std::vector<bool> &isChanged)
 {
-    int pos = p->getPosition();
-    if(!input.isPixelInQueue(pos))
+    while(!queue.empty())
     {
-        Qc.push_back(p);
-        input.setPixelInQueue(pos, true);
-    }
-    
-    p->setValid(false);
-
-    std::queue<Pixel*> Qq;
-    Qq.push(p);
-
-    while(!Qq.empty())
-    {
-        int position = Qq.front()->getPosition();
-        Qq.pop();
+        int position = queue.front()->getPosition();
+        queue.pop();
 
         for(int k=0; k<=K; ++k)
         {
             int length = -1;
-            if(input.isPixelValid(position))
+            if(k>0)
             {
-                for(int i=0; i<pred.size(); ++i)
-                    if(!input.isPixelBorder(position+pred[i]))
-                        length = std::max(path[k][position+pred[i]], length);
+                for(int j=0; j<pred.size(); ++j)
+                    if(!input.isPixelBorder(position+pred[j]))
+                        length = std::max(path[k-1][position+pred[j]], length);
             }
 
-            else if(k>0)
-            {
-                for(int i=0; i<pred.size(); ++i)
-                    if(!input.isPixelBorder(position+pred[i]))
-                        length = std::max(path[k-1][position+pred[i]], length);
-            }
+            for(int j=0; j<pred.size(); ++j)
+                if(!input.isPixelBorder(position+pred[j]) && input.isPixelValid(position+pred[j]))
+                    length = std::max(path[k][position+pred[j]], length);
 
             if(length+1 < path[k][position])
             {
                 path[k][position] = length+1;
+
                 for(int i=0; i<succ.size(); ++i)
                     if(!input.isPixelBorder(position+succ[i]))
-                        Qq.push(input.getPixelAdress(position+succ[i]));
+                        next.push(input.getPixelAdress(position+succ[i]));
 
-                if(!input.isPixelInQueue(position))
+                if(isChanged[position])
                 {
-                    Qc.push_back(input.getPixelAdress(position));
-                    input.setPixelInQueue(position, true);
+                    int l = 0;
+                    for(int k=0; k<=K; ++k)
+                        if(K-k-!input.isPixelValid(position) >= 0)
+                            l = std::max(lm[k][position]+lp[K-k-!input.isPixelValid(position)][position], l);
+
+                    if(l-1 < L)
+                    {
+                        if(threshold > output.getPixelIntensity(position))
+                            output.setPixelIntensity(position, threshold);
+                        // input.setPixelValid(position,false);
+                        isChanged[position] = false;
+                    }
                 }
             }
         }

@@ -5,7 +5,7 @@
 #include <pybind11/pybind11.h>
 #include <pybind11/stl.h>
 #include <pybind11/numpy.h>
-
+#include <queue>
 
 namespace py = pybind11;
 
@@ -19,7 +19,7 @@ class PO
         void reset();
 
     private:
-        void printPath(std::vector<int> &lp, std::vector<int> &lm);
+        void printPath(std::vector<std::vector<int>> &lp, std::vector<std::vector<int>> &lm, int K);
         void initOutput();
         void sortImage();
         void initValidArray(std::vector<bool> &valid);
@@ -28,12 +28,17 @@ class PO
                        std::vector<std::vector<int>> &lp, 
                        std::vector<std::vector<int>> &lm,
                        int K);
-        void propagate(Pixel *p,
-                       std::vector<std::vector<int>> &path,
-                       std::vector<int> &nf, 
-                       std::vector<int> &nb,
-                       std::vector<Pixel*> &Qc,
-                       int K);
+        void propagate( std::queue<Pixel*> &queue, 
+                        std::queue<Pixel*> &next, 
+                        std::vector<std::vector<int>> &path, 
+                        std::vector<int> &succ, 
+                        std::vector<int> &pred, 
+                        std::vector<std::vector<int>> &lm, 
+                        std::vector<std::vector<int>> &lp, 
+                        int L, 
+                        int K, 
+                        int threshold,
+                        std::vector<bool> &isChanged);
         void createNeighborhood(int neighborType, 
                                 std::vector<int> &np, 
                                 std::vector<int> &nm);
