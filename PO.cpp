@@ -124,21 +124,21 @@ bool PO::initInput(int L, int neighborType, std::vector<std::vector<int>> &lp, s
                     break;
                 
                 case 3:
-                    if(x >= L)
+                    if(x-1 >= L-1)
                     {
-                        lp[k].push_back(L);
+                        lp[k].push_back(L-1);
                         pathLongEnough = true;
                     }
                     else
-                        lp[k].push_back(x);
+                        lp[k].push_back(x-1);
                     
-                    if(input.getWidth()-1-x >= L)
+                    if(input.getWidth()-1-x-1 >= L-1)
                     {
-                        lm[k].push_back(L);
+                        lm[k].push_back(L-1);
                         pathLongEnough = true;
                     }
                     else
-                        lm[k].push_back(input.getWidth()-1-x);
+                        lm[k].push_back(input.getWidth()-1-x-1);
                     break;
 
                 case 4:
@@ -207,13 +207,21 @@ py::array PO::computePO(int L, int K, int neighborType)
     if(initInput(L, neighborType, lp, lm, K))
     {
         // Liste des pixel à traiter
-        std::vector<std::queue<Pixel*>> listM(input.getHeight()), listP(input.getHeight());
+        std::vector<std::queue<Pixel*>> listM, listP;
 
-        // Compteur pour savoir si tous les chemins du pixel p sont éteints
-        std::vector<int> count(input.getWidth()*input.getHeight(), K+1);
+        if(neighborType == 1)
+        {
+            listM.resize(input.getHeight());
+            listP.resize(input.getHeight());
+        }
+        else if(neighborType == 3)
+        {
+            listM.resize(input.getWidth());
+            listP.resize(input.getWidth());
+        }
 
-        // Pour savoir si le chemin k du pixel p est éteint
-        std::vector<std::vector<bool>> isChanged(K+1, std::vector<bool>(input.getWidth()*input.getHeight(), true));
+        std::queue<int> active;
+        std::vector<bool> change(input.getWidth()*input.getHeight(), true);
 
         for(int i=0; i<sortedImage.size();)
         {
@@ -225,32 +233,85 @@ py::array PO::computePO(int L, int K, int neighborType)
                 {
                     input.setPixelValid(pos, false);
 
-                    if(count[pos] > 0)
+                    if(change[pos])
                     {
-                        count[pos] = 0;
+                        change[pos] = false;
                         if(threshold > output.getPixelIntensity(pos))
                             output.setPixelIntensity(pos, threshold);
                     }
 
-                    int y = input.getPositionY(pos);
+                    if(neighborType == 1)
+                    {
+                        int y = input.getPositionY(pos);
 
-                    for(int j=0; j<nm.size(); ++j)
-                        if(!input.isPixelBorder(pos+nm[j]))
-                            listM[y+1].push(input.getPixelAdress(pos+nm[j]));
+                        for(int j=0; j<nm.size(); ++j)
+                            if(!input.isPixelBorder(pos+nm[j]))
+                                listM[y+1].push(input.getPixelAdress(pos+nm[j]));
 
-                    for(int j=0; j<np.size(); ++j)
-                        if(!input.isPixelBorder(pos+np[j]))
-                            listP[y-1].push(input.getPixelAdress(pos+np[j]));
+                        for(int j=0; j<np.size(); ++j)
+                            if(!input.isPixelBorder(pos+np[j]))
+                                listP[y-1].push(input.getPixelAdress(pos+np[j]));
+                    }
+                    else if(neighborType == 3)
+                    {
+                        int x = input.getPositionX(pos);
+
+                        for(int j=0; j<nm.size(); ++j)
+                            if(!input.isPixelBorder(pos+nm[j]))
+                                listM[x-1].push(input.getPixelAdress(pos+nm[j]));
+
+                        for(int j=0; j<np.size(); ++j)
+                            if(!input.isPixelBorder(pos+np[j]))
+                                listP[x+1].push(input.getPixelAdress(pos+np[j]));
+                    }
                 }
                 ++i;
             }
 
-            for(int j=0; j<listM.size()-1; ++j)
-                propagate(listM[j], listM[j+1], lm, nm, np, lm, lp, L, K, threshold, count, isChanged, true);
+            if(neighborType == 1)
+            {
+                for(int j=0; j<listM.size()-1; ++j)
+                    propagate(listM[j], listM[j+1], lm, nm, np, lm, lp, K, active);
 
-            for(int j=listP.size()-1; j>0; --j)
-                propagate(listP[j], listP[j-1], lp, np, nm, lm, lp, L, K, threshold, count, isChanged, false);
+                for(int j=listP.size()-1; j>0; --j)
+                    propagate(listP[j], listP[j-1], lp, np, nm, lm, lp, K, active);
+            }
 
+            else if(neighborType == 3)
+            {
+                for(int j=listM.size()-1; j>0; --j)
+                    propagate(listM[j], listM[j-1], lm, nm, np, lm, lp, K, active);
+
+                for(int j=0; j< listP.size()-1; ++j)
+                    propagate(listP[j], listP[j+1], lp, np, nm, lm, lp, K, active);
+            }
+
+            while(!active.empty())
+            {
+                int pos = active.front();
+                active.pop();
+
+                if(change[pos])
+                {
+                    int length = 0;
+                    for(int k=0; k<=K; ++k)
+                    {  
+                        if(K-k-!input.isPixelValid(pos) >= 0)
+                            length = std::max(length, lm[k][pos]+lp[K-k-!input.isPixelValid(pos)][pos]+1);
+                    }
+
+                    if(length < L)
+                    {
+                        change[pos] = false;
+                        if(threshold > output.getPixelIntensity(pos))
+                            output.setPixelIntensity(pos, threshold);
+                    }
+                }
+            }
+
+            printPath(lp, lm, K);
+
+            std::cout << "-----------------\n";
         }
     }
 
@@ -272,12 +333,8 @@ void PO::propagate(  std::queue<Pixel*> &queue,
                 std::vector<int> &pred, 
                 std::vector<std::vector<int>> &lm, 
                 std::vector<std::vector<int>> &lp, 
-                int L, 
-                int K, 
-                int threshold,
-                std::vector<int> &count,
-                std::vector<std::vector<bool>> &isChanged,
-                bool isDownward)
+                int K,
+                std::queue<int> &active)
 {
     while(!queue.empty())
     {
@@ -306,27 +363,7 @@ void PO::propagate(  std::queue<Pixel*> &queue,
                     if(!input.isPixelBorder(position+succ[i]))
                         next.push(input.getPixelAdress(position+succ[i]));
 
-                if(isChanged[k][position] && K-k-!input.isPixelValid(position) >= 0)
-                {
-                    bool value;
-                    if(isDownward)
-                        value = (lm[k][position]+lp[K-k-!input.isPixelValid(position)][position]+1 < L);
-                    else
-                        value = (lm[K-k-!input.isPixelValid(position)][position]+lp[k][position]+1 < L);
-
-                    if(value < L)
-                    {
-                        --count[position];
-
-                        if(isDownward)
-                            isChanged[k][position] = false;
-                        else
-                            isChanged[K-k-!input.isPixelValid(position)][position] = false;
-                        if(count[position] == 0 && threshold > output.getPixelIntensity(position))
-                            output.setPixelIntensity(position, threshold);
-                        // input.setPixelValid(position,false);
-                    }
-                }
+                active.push(position);
             }
         }
     }

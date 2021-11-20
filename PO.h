@@ -36,12 +36,8 @@ class PO
                         std::vector<int> &pred, 
                         std::vector<std::vector<int>> &lm, 
                         std::vector<std::vector<int>> &lp, 
-                        int L, 
                         int K, 
-                        int threshold,
-                        std::vector<int> &count,
-                        std::vector<std::vector<bool>> &isChanged,
-                        bool isDownward);
+                        std::queue<int> &active);
         void createNeighborhood(int neighborType, 
                                 std::vector<int> &np, 
                                 std::vector<int> &nm);
