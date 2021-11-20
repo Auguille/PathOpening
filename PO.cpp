@@ -206,10 +206,15 @@ py::array PO::computePO(int L, int K, int neighborType)
     std::vector<std::vector<int>> lp, lm;
     if(initInput(L, neighborType, lp, lm, K))
     {
-        // printPath(lm[0], lp[0]);
-        std::vector<Pixel*> Qc;
+        // Liste des pixel à traiter
         std::vector<std::queue<Pixel*>> listM(input.getHeight()), listP(input.getHeight());
-        std::vector<bool> isChanged(input.getWidth()*input.getHeight(), true);
+
+        // Compteur pour savoir si tous les chemins du pixel p sont éteints
+        std::vector<int> count(input.getWidth()*input.getHeight(), K+1);
+
+        // Pour savoir si le chemin k du pixel p est éteint
+        std::vector<std::vector<bool>> isChanged(K+1, std::vector<bool>(input.getWidth()*input.getHeight(), true));
+
         for(int i=0; i<sortedImage.size();)
         {
             int threshold = sortedImage[i]->getValue();
@@ -220,15 +225,11 @@ py::array PO::computePO(int L, int K, int neighborType)
                 {
                     input.setPixelValid(pos, false);
 
-                    int length = 0;
-                    for(int k=0; k<K; ++k)
-                        length = std::max(lm[k][pos]+lp[K-k-1][pos], length);
-
-                    if(length+1 < L && isChanged[pos])
+                    if(count[pos] > 0)
                     {
+                        count[pos] = 0;
                         if(threshold > output.getPixelIntensity(pos))
                             output.setPixelIntensity(pos, threshold);
-                        isChanged[pos] = false;
                     }
 
                     int y = input.getPositionY(pos);
@@ -245,15 +246,11 @@ py::array PO::computePO(int L, int K, int neighborType)
             }
 
             for(int j=0; j<listM.size()-1; ++j)
-                propagate(listM[j], listM[j+1], lm, nm, np, lm, lp, L, K, threshold, isChanged);
+                propagate(listM[j], listM[j+1], lm, nm, np, lm, lp, L, K, threshold, count, isChanged, true);
 
             for(int j=listP.size()-1; j>0; --j)
-                propagate(listP[j], listP[j-1], lp, np, nm, lm, lp, L, K, threshold, isChanged);
+                propagate(listP[j], listP[j-1], lp, np, nm, lm, lp, L, K, threshold, count, isChanged, false);
 
-
-            std::cout << "----------------------\n";
-
-            printPath(lp, lm, K);
         }
     }
 
@@ -278,7 +275,9 @@ void PO::propagate(  std::queue<Pixel*> &queue,
                 int L, 
                 int K, 
                 int threshold,
-                std::vector<bool> &isChanged)
+                std::vector<int> &count,
+                std::vector<std::vector<bool>> &isChanged,
+                bool isDownward)
 {
     while(!queue.empty())
     {
@@ -307,19 +306,25 @@ void PO::propagate(  std::queue<Pixel*> &queue,
                     if(!input.isPixelBorder(position+succ[i]))
                         next.push(input.getPixelAdress(position+succ[i]));
 
-                if(isChanged[position])
+                if(isChanged[k][position] && K-k-!input.isPixelValid(position) >= 0)
                 {
-                    int l = 0;
-                    for(int k=0; k<=K; ++k)
-                        if(K-k-!input.isPixelValid(position) >= 0)
-                            l = std::max(lm[k][position]+lp[K-k-!input.isPixelValid(position)][position], l);
+                    bool value;
+                    if(isDownward)
+                        value = (lm[k][position]+lp[K-k-!input.isPixelValid(position)][position]+1 < L);
+                    else
+                        value = (lm[K-k-!input.isPixelValid(position)][position]+lp[k][position]+1 < L);
 
-                    if(l-1 < L)
+                    if(value < L)
                     {
-                        if(threshold > output.getPixelIntensity(position))
+                        --count[position];
+
+                        if(isDownward)
+                            isChanged[k][position] = false;
+                        else
+                            isChanged[K-k-!input.isPixelValid(position)][position] = false;
+                        if(count[position] == 0 && threshold > output.getPixelIntensity(position))
                             output.setPixelIntensity(position, threshold);
                         // input.setPixelValid(position,false);
-                        isChanged[position] = false;
                     }
                 }
             }

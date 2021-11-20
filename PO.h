@@ -20,6 +20,7 @@ class PO
 
     private:
         void printPath(std::vector<std::vector<int>> &lp, std::vector<std::vector<int>> &lm, int K);
+        void printCount(std::vector<int> &count, std::vector<std::vector<bool>> &isChanged, int K);
         void initOutput();
         void sortImage();
         void initValidArray(std::vector<bool> &valid);
@@ -38,7 +39,9 @@ class PO
                         int L, 
                         int K, 
                         int threshold,
-                        std::vector<bool> &isChanged);
+                        std::vector<int> &count,
+                        std::vector<std::vector<bool>> &isChanged,
+                        bool isDownward);
         void createNeighborhood(int neighborType, 
                                 std::vector<int> &np, 
                                 std::vector<int> &nm);
