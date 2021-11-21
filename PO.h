@@ -2,27 +2,22 @@
 #define __PO_H__
 
 #include "Image.h"
-#include <pybind11/pybind11.h>
-#include <pybind11/stl.h>
-#include <pybind11/numpy.h>
 #include <queue>
-
-namespace py = pybind11;
 
 class PO
 {
     public:
-        PO(std::vector<std::vector<int>> &image);
+        PO(std::vector<std::vector<int>> &image, bool opening);
         ~PO();
 
-        py::array computePO(int L, int K, int neighborType);
+        std::vector<std::vector<int>> computePO(int L, int K, int neighborType, bool opening);
         void reset();
 
     private:
         void printPath(std::vector<std::vector<int>> &lp, std::vector<std::vector<int>> &lm, int K);
         void printCount(std::vector<int> &count, std::vector<std::vector<bool>> &isChanged, int K);
-        void initOutput();
-        void sortImage();
+        void initOutput(bool opening);
+        void sortImage(bool opening);
         void initValidArray(std::vector<bool> &valid);
         bool initInput(int L, 
                        int neighborType, 

@@ -3,11 +3,11 @@
 #include <algorithm>
 #include <iostream>
 
-PO::PO(std::vector<std::vector<int>> &image)
+PO::PO(std::vector<std::vector<int>> &image, bool opening)
 {
     input.initImage(image);
-    initOutput();
-    sortImage();
+    initOutput(opening);
+    sortImage(opening);
 }
 
 PO::~PO()
@@ -198,7 +198,7 @@ void PO::printPath(std::vector<std::vector<int>> &lp, std::vector<std::vector<in
     }
 }
 
-py::array PO::computePO(int L, int K, int neighborType)
+std::vector<std::vector<int>> PO::computePO(int L, int K, int neighborType, bool opening)
 {
     std::vector<int> np, nm;
     createNeighborhood(neighborType, np, nm);
@@ -242,8 +242,16 @@ py::array PO::computePO(int L, int K, int neighborType)
                     if(change[pos])
                     {
                         change[pos] = false;
-                        if(threshold > output.getPixelIntensity(pos))
-                            output.setPixelIntensity(pos, threshold);
+                        if(opening)
+                        {
+                            if(threshold > output.getPixelIntensity(pos))
+                                output.setPixelIntensity(pos, threshold);
+                        }
+                        else
+                        {
+                            if(threshold < output.getPixelIntensity(pos))
+                                output.setPixelIntensity(pos, threshold);
+                        }
                     }
 
                     if(neighborType == 1)
@@ -252,23 +260,18 @@ py::array PO::computePO(int L, int K, int neighborType)
 
                         for(int j=0; j<nm.size(); ++j)
                             if(!input.isPixelBorder(pos+nm[j]))
-                                listM[y+1].push(input.getPixelAdress(pos+nm[j]));
+                            {
+                                int y = input.getPositionY(pos+nm[j]);
+                                listM[y-1].push(input.getPixelAdress(pos+nm[j]));
+                            }
 
                         for(int j=0; j<np.size(); ++j)
                             if(!input.isPixelBorder(pos+np[j]))
-                                listP[y-1].push(input.getPixelAdress(pos+np[j]));
-                    }
-                    else if(neighborType == 3)
-                    {
-                        int x = input.getPositionX(pos);
-
-                        for(int j=0; j<nm.size(); ++j)
-                            if(!input.isPixelBorder(pos+nm[j]))
-                                listM[x-1].push(input.getPixelAdress(pos+nm[j]));
-
-                        for(int j=0; j<np.size(); ++j)
-                            if(!input.isPixelBorder(pos+np[j]))
-                                listP[x+1].push(input.getPixelAdress(pos+np[j]));
+                            {
+                                int y = input.getPositionY(pos+np[j]);
+                                int val = input.getHeight()-1-y-1;
+                                listP[val].push(input.getPixelAdress(pos+np[j]));
+                            }
                     }
                     else if(neighborType == 2)
                     {
@@ -292,6 +295,25 @@ py::array PO::computePO(int L, int K, int neighborType)
                                 int val = (input.getHeight()-2)+(x-1)-(y-1)-1;
 
                                 listP[val].push(input.getPixelAdress(pos+np[j]));
+                            }
+                    }
+                    else if(neighborType == 3)
+                    {
+                        int x = input.getPositionX(pos);
+
+                        for(int j=0; j<nm.size(); ++j)
+                            if(!input.isPixelBorder(pos+nm[j]))
+                            {
+                                int x = input.getPositionX(pos+nm[j]);
+                                int val = input.getWidth()-1-x-1;
+                                listM[val].push(input.getPixelAdress(pos+nm[j]));
+                            }
+
+                        for(int j=0; j<np.size(); ++j)
+                            if(!input.isPixelBorder(pos+np[j]))
+                            {
+                                int x = input.getPositionX(pos+np[j]);
+                                listP[x-1].push(input.getPixelAdress(pos+np[j]));
                             }
                     }
                     else if(neighborType == 4)
@@ -322,13 +344,13 @@ py::array PO::computePO(int L, int K, int neighborType)
                 ++i;
             }
 
-            if(neighborType == 1)
+            if(neighborType == 1 || neighborType == 3)
             {
                 for(int j=0; j<listM.size()-1; ++j)
                     propagate(listM[j], listM[j+1], listM[j+1], lm, nm, np, lm, lp, K, active);
 
-                for(int j=listP.size()-1; j>0; --j)
-                    propagate(listP[j], listP[j-1], listP[j-1], lp, np, nm, lm, lp, K, active);
+                for(int j=0; j<listP.size()-1; ++j)
+                    propagate(listP[j], listP[j+1], listP[j+1], lp, np, nm, lm, lp, K, active);
             }
 
             else if(neighborType == 2 || neighborType == 4)
@@ -339,15 +361,6 @@ py::array PO::computePO(int L, int K, int neighborType)
 
                 for(int j=0; j<listP.size(); ++j)
                     propagate(listP[j], listP[j+1], listP[j+2], lp, np, nm, lm, lp, K, active);
-            }
-
-            else if(neighborType == 3)
-            {
-                for(int j=listM.size()-1; j>0; --j)
-                    propagate(listM[j], listM[j-1], listM[j-1], lm, nm, np, lm, lp, K, active);
-
-                for(int j=0; j< listP.size()-1; ++j)
-                    propagate(listP[j], listP[j+1], listP[j+1], lp, np, nm, lm, lp, K, active);
             }
 
             while(!active.empty())
@@ -369,17 +382,20 @@ py::array PO::computePO(int L, int K, int neighborType)
                     if(length < L)
                     {
                         change[pos] = false;
-                        if(threshold > output.getPixelIntensity(pos))
-                            output.setPixelIntensity(pos, threshold);
-
+                        if(opening)
+                        {
+                            if(threshold > output.getPixelIntensity(pos))
+                                output.setPixelIntensity(pos, threshold);
+                        }
+                        else
+                        {
+                            if(threshold < output.getPixelIntensity(pos))
+                                output.setPixelIntensity(pos, threshold);
+                        }
                         input.setPixelValid(pos, false);
                     }
                 }
             }
-
-            // printPath(lp, lm, K);
-
-            // std::cout << "-----------------\n";
         }
     }
 
@@ -391,7 +407,8 @@ py::array PO::computePO(int L, int K, int neighborType)
             input.setPixelValid(i,true);
     }
 
-    return py::cast(output.returnImage());
+    return output.returnImage();
+    // return py::cast(output.returnImage());
 }
 
 void PO::propagate(  std::queue<Pixel*> &queue, 
@@ -446,7 +463,7 @@ void PO::propagate(  std::queue<Pixel*> &queue,
     }
 }
 
-void PO::sortImage()
+void PO::sortImage(bool opening)
 {
     for(int i=0; i<input.getWidth()*input.getHeight(); ++i)
     {
@@ -454,23 +471,27 @@ void PO::sortImage()
             sortedImage.push_back(input.getPixelAdress(i));
     }
 
-    std::stable_sort(sortedImage.begin(), sortedImage.end(), [](Pixel *p1, Pixel *p2)
-    {
-        return p1->getValue() < p2->getValue();
-    });
+    if(opening)
+        std::stable_sort(sortedImage.begin(), sortedImage.end(), [](Pixel *p1, Pixel *p2)
+        {
+            return p1->getValue() < p2->getValue();
+        });
+    else
+        std::stable_sort(sortedImage.begin(), sortedImage.end(), [](Pixel *p1, Pixel *p2)
+        {
+            return p1->getValue() > p2->getValue();
+        });
+    
 }
 
-void PO::initOutput()
+void PO::initOutput(bool opening)
 {
     output = input;
-    for(int i=0; i<input.getHeight()*input.getWidth(); ++i)
-        output.setPixelIntensity(i, 0);
-}
 
-
-PYBIND11_MODULE(PathOpening, m)
-{
-    py::class_<PO>(m, "PO")
-        .def(py::init<std::vector<std::vector<int>> &>())
-        .def("computePO", &PO::computePO);
+    if(opening)
+        for(int i=0; i<input.getHeight()*input.getWidth(); ++i)
+            output.setPixelIntensity(i, 0);
+    else
+        for(int i=0; i<input.getHeight()*input.getWidth(); ++i)
+            output.setPixelIntensity(i, 255);
 }
