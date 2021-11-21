@@ -22,17 +22,19 @@ Le makefile va générer un fichier .so représentant le module python de l'ouve
 
 ## Usage
 
-La libraire permet l'utilisation d'une fonction :
+La libraire permet l'utilisation de quatres fonctions :
 ```py
-computePO(PathLength, GapNumber, Direction)
+pathOpening(Image, PathLength, GapNumber, Direction)
+completePathOpening(Image, PathLength, GapNumber)
+pathClosing(Image, PathLength, GapNumber, Direction)
+completePathClosing(Image, PathLength, GapNumber)
 ```
-PathLength représente la longueur d'un chemin,
-
-GapNumber représente le nombre de trou présent au maximum dans un chemin,
-
+Image représente l'image à traiter<br>
+PathLength représente la longueur d'un chemin,<br>
+GapNumber représente le nombre de trou présent au maximum dans un chemin,<br>
 Direction représente le graphe de voisinage utilisé (1 = N-S, 2=NE-SW, 3=E-W, 4=SE-NW)
 
-Cette fonction renvoie l'image calculée à partir du maximum de chaque pixel entre l'image précédemment calculée (Une image nulle si il n'y a pas de précedent) et l'image calculée dans la direction n
+Les fonctions completePathOpening et completePathClosing renvoie l'ouverture par chemin (respectivement la fermeture) calculé dans les quatres directions
 
 **Exemple d'utilisation**
 
@@ -43,10 +45,8 @@ import cv2                  # Pour la lecture d'image
 # Lecture d'une image
 img = cv2.imread("../Images/DNAGI.tif", cv2.IMREAD_GRAYSCALE)
 
-test = po.PO(img)
-for i in range(1,5):
-    imgres = test.computePO(70, 3, i)
+result = po.completePathOpening(img, 70, 3)
 
 # Ecriture du résultat
-cv2.imwrite("../Results/DNAGI-out-70-3.tif", imgres)
+cv2.imwrite("../Results/DNAGI-out-70-3.tif", result)
 ```
