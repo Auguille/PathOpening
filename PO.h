@@ -30,7 +30,8 @@ class PO
                        std::vector<std::vector<int>> &lm,
                        int K);
         void propagate( std::queue<Pixel*> &queue, 
-                        std::queue<Pixel*> &next, 
+                        std::queue<Pixel*> &next1,
+                        std::queue<Pixel*> &next2, 
                         std::vector<std::vector<int>> &path, 
                         std::vector<int> &succ, 
                         std::vector<int> &pred, 

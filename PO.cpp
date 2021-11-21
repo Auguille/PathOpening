@@ -106,21 +106,21 @@ bool PO::initInput(int L, int neighborType, std::vector<std::vector<int>> &lp, s
                     break;
 
                 case 2:
-                    if((input.getWidth()-2)-(x-1)+(y-1) >= L)
+                    if((input.getWidth()-2)-(x-1)+(y-1)-1 >= L-1)
                     {
-                        lm[k].push_back(L);
+                        lm[k].push_back(L-1);
                         pathLongEnough = true;
                     }
                     else
-                        lm[k].push_back((input.getWidth()-2)-(x-1)+(y-1));
+                        lm[k].push_back((input.getWidth()-2)-(x-1)+(y-1)-1);
 
-                    if((input.getHeight()-2)+(x-1)-(y-1) >= L)
+                    if((input.getHeight()-2)+(x-1)-(y-1)-1 >= L-1)
                     {
-                        lp[k].push_back(L);
+                        lp[k].push_back(L-1);
                         pathLongEnough = true;
                     }
                     else
-                        lp[k].push_back((input.getHeight()-2)+(x-1)-(y-1));
+                        lp[k].push_back((input.getHeight()-2)+(x-1)-(y-1)-1);
                     break;
                 
                 case 3:
@@ -142,21 +142,21 @@ bool PO::initInput(int L, int neighborType, std::vector<std::vector<int>> &lp, s
                     break;
 
                 case 4:
-                    if(input.getWidth()-2+input.getHeight()-2-1-(x-1)-(y-1) >= L)
+                    if(input.getWidth()-2+input.getHeight()-2-1-(x-1)-(y-1)-1 >= L-1)
                     {
-                        lp[k].push_back(L);
+                        lp[k].push_back(L-1);
                         pathLongEnough = true;
                     }
                     else
-                        lp[k].push_back((input.getWidth()-2)+(input.getHeight()-2)-1-(x-1)-(y-1));   
+                        lp[k].push_back((input.getWidth()-2)+(input.getHeight()-2)-1-(x-1)-(y-1)-1);   
 
-                    if((x-1)+(y-1)+1 >= L)
+                    if((x-1)+(y-1)+1-1 >= L-1)
                     {
-                        lm[k].push_back(L);
+                        lm[k].push_back(L-1);
                         pathLongEnough = true;
                     }
                     else
-                        lm[k].push_back((x-1)+(y-1)+1);
+                        lm[k].push_back((x-1)+(y-1)+1-1);
                     break;
 
                 default:
@@ -219,6 +219,11 @@ py::array PO::computePO(int L, int K, int neighborType)
             listM.resize(input.getWidth());
             listP.resize(input.getWidth());
         }
+        else if(neighborType == 2 || neighborType == 4)
+        {
+            listM.resize(input.getWidth()+input.getHeight()-1);
+            listP.resize(input.getWidth()+input.getHeight()-1);
+        }
 
         std::queue<int> active;
         std::vector<bool> change(input.getWidth()*input.getHeight(), true);
@@ -231,6 +236,7 @@ py::array PO::computePO(int L, int K, int neighborType)
                 int pos = sortedImage[i]->getPosition();
                 if(input.isPixelValid(pos))
                 {
+                    // std::cout << pos << std::endl;
                     input.setPixelValid(pos, false);
 
                     if(change[pos])
@@ -264,6 +270,54 @@ py::array PO::computePO(int L, int K, int neighborType)
                             if(!input.isPixelBorder(pos+np[j]))
                                 listP[x+1].push(input.getPixelAdress(pos+np[j]));
                     }
+                    else if(neighborType == 2)
+                    {
+                        for(int j=0; j<nm.size(); ++j)
+                            if(!input.isPixelBorder(pos+nm[j]))
+                            {
+                                int x = input.getPositionX(pos+nm[j]);
+                                int y = input.getPositionY(pos+nm[j]);
+
+                                int val = (input.getWidth()-2)-(x-1)+(y-1)-1;
+
+                                listM[val].push(input.getPixelAdress(pos+nm[j]));
+                            }
+
+                        for(int j=0; j<np.size(); ++j)
+                            if(!input.isPixelBorder(pos+np[j]))
+                            {
+                                int x = input.getPositionX(pos+np[j]);
+                                int y = input.getPositionY(pos+np[j]);
+
+                                int val = (input.getHeight()-2)+(x-1)-(y-1)-1;
+
+                                listP[val].push(input.getPixelAdress(pos+np[j]));
+                            }
+                    }
+                    else if(neighborType == 4)
+                    {
+                        for(int j=0; j<nm.size(); ++j)
+                            if(!input.isPixelBorder(pos+nm[j]))
+                            {
+                                int x = input.getPositionX(pos+nm[j]);
+                                int y = input.getPositionY(pos+nm[j]);
+
+                                int val = x+y;
+
+                                listM[val].push(input.getPixelAdress(pos+nm[j]));
+                            }
+
+                        for(int j=0; j<np.size(); ++j)
+                            if(!input.isPixelBorder(pos+np[j]))
+                            {
+                                int x = input.getPositionX(pos+np[j]);
+                                int y = input.getPositionY(pos+np[j]);
+
+                                int val = input.getWidth()-2+input.getHeight()-2-1-(x-1)-(y-1)-1;
+
+                                listP[val].push(input.getPixelAdress(pos+np[j]));
+                            }
+                    }
                 }
                 ++i;
             }
@@ -271,25 +325,37 @@ py::array PO::computePO(int L, int K, int neighborType)
             if(neighborType == 1)
             {
                 for(int j=0; j<listM.size()-1; ++j)
-                    propagate(listM[j], listM[j+1], lm, nm, np, lm, lp, K, active);
+                    propagate(listM[j], listM[j+1], listM[j+1], lm, nm, np, lm, lp, K, active);
 
                 for(int j=listP.size()-1; j>0; --j)
-                    propagate(listP[j], listP[j-1], lp, np, nm, lm, lp, K, active);
+                    propagate(listP[j], listP[j-1], listP[j-1], lp, np, nm, lm, lp, K, active);
+            }
+
+            else if(neighborType == 2 || neighborType == 4)
+            {
+                for(int j=0; j<listM.size(); ++j)
+                    propagate(listM[j], listM[j+1], listM[j+2], lm, nm, np, lm, lp, K, active);
+
+
+                for(int j=0; j<listP.size(); ++j)
+                    propagate(listP[j], listP[j+1], listP[j+2], lp, np, nm, lm, lp, K, active);
             }
 
             else if(neighborType == 3)
             {
                 for(int j=listM.size()-1; j>0; --j)
-                    propagate(listM[j], listM[j-1], lm, nm, np, lm, lp, K, active);
+                    propagate(listM[j], listM[j-1], listM[j-1], lm, nm, np, lm, lp, K, active);
 
                 for(int j=0; j< listP.size()-1; ++j)
-                    propagate(listP[j], listP[j+1], lp, np, nm, lm, lp, K, active);
+                    propagate(listP[j], listP[j+1], listP[j+1], lp, np, nm, lm, lp, K, active);
             }
 
             while(!active.empty())
             {
                 int pos = active.front();
                 active.pop();
+
+                input.setPixelInQueue(pos, false);
 
                 if(change[pos])
                 {
@@ -305,13 +371,15 @@ py::array PO::computePO(int L, int K, int neighborType)
                         change[pos] = false;
                         if(threshold > output.getPixelIntensity(pos))
                             output.setPixelIntensity(pos, threshold);
+
+                        input.setPixelValid(pos, false);
                     }
                 }
             }
 
-            printPath(lp, lm, K);
+            // printPath(lp, lm, K);
 
-            std::cout << "-----------------\n";
+            // std::cout << "-----------------\n";
         }
     }
 
@@ -327,7 +395,8 @@ py::array PO::computePO(int L, int K, int neighborType)
 }
 
 void PO::propagate(  std::queue<Pixel*> &queue, 
-                std::queue<Pixel*> &next, 
+                std::queue<Pixel*> &next1,
+                std::queue<Pixel*> &next2,
                 std::vector<std::vector<int>> &path, 
                 std::vector<int> &succ, 
                 std::vector<int> &pred, 
@@ -359,11 +428,19 @@ void PO::propagate(  std::queue<Pixel*> &queue,
             {
                 path[k][position] = length+1;
 
-                for(int i=0; i<succ.size(); ++i)
+                for(int i=0; i<succ.size()-1; ++i)
                     if(!input.isPixelBorder(position+succ[i]))
-                        next.push(input.getPixelAdress(position+succ[i]));
+                        next1.push(input.getPixelAdress(position+succ[i]));
 
-                active.push(position);
+                if(!input.isPixelBorder(position+succ[succ.size()-1]))
+                    next2.push(input.getPixelAdress(position+succ[succ.size()-1]));
+
+                if(!input.isPixelInQueue(position))
+                {
+                    input.setPixelInQueue(position, true);
+                    active.push(position);
+                }
+
             }
         }
     }
