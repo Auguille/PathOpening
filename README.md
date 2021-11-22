@@ -16,9 +16,15 @@ mkdir build
 cd build
 cmake ../
 make -j4
+pip install ../
 ```
 
-Le makefile va générer un fichier .so représentant le module python de l'ouverture par chemin
+Le makefile va générer un fichier PathOpening.so représentant le module python de l'ouverture par chemin. <br>
+La commande pip install ../ permet d'installer la librairie à partir du fichier setup.py dans l'environnement python pour pouvoir l'utiliser simplement à l'aide de l'import 
+
+```py
+import PathOpening
+```
 
 ## Usage
 
@@ -34,7 +40,7 @@ PathLength représente la longueur d'un chemin,<br>
 GapNumber représente le nombre de trou présent au maximum dans un chemin,<br>
 Direction représente le graphe de voisinage utilisé (1 = N-S, 2=NE-SW, 3=E-W, 4=SE-NW)
 
-Les fonctions completePathOpening et completePathClosing renvoie l'ouverture par chemin (respectivement la fermeture) calculé dans les quatres directions
+Les fonctions completePathOpening et completePathClosing renvoient la nouvelle image calculée à l'aide de l'opérateur d'ouverture (respectivement fermeture) par chemin dans les quatres directions
 
 **Exemple d'utilisation**
 
