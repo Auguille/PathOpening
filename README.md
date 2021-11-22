@@ -45,14 +45,15 @@ Les fonctions completePathOpening et completePathClosing renvoient la nouvelle i
 **Exemple d'utilisation**
 
 ```py
+# File test.py
 import PathOpening as po    # Notre module
 import cv2                  # Pour la lecture d'image
 
 # Lecture d'une image
-img = cv2.imread("../Images/DNAGI.tif", cv2.IMREAD_GRAYSCALE)
+img = cv2.imread("Images/DNAGI.tif", cv2.IMREAD_GRAYSCALE)
 
 result = po.completePathOpening(img, 70, 3)
 
 # Ecriture du résultat
-cv2.imwrite("../Results/DNAGI-out-70-3.tif", result)
+cv2.imwrite("Results/DNAGI-out-70-3.tif", result)
 ```
