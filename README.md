@@ -20,8 +20,7 @@ make -j4
 pip install ../
 ```
 
-Le makefile va générer un fichier PathOpening.so représentant le module python de l'ouverture par chemin. <br>
-La commande pip install ../ permet d'installer la librairie à partir du fichier setup.py dans l'environnement python pour pouvoir l'utiliser simplement à l'aide de l'import 
+Now you can use this library with a simple import in Python
 
 ```py
 import PathOpening
